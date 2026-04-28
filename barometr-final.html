@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barometr Menedżerski</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        header { text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #1e1ce3 0%, #78f2f1 100%); color: white; border-radius: 10px; margin-bottom: 30px; }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { font-size: 1.1em; opacity: 0.9; }
+        .logo { max-height: 60px; margin-bottom: 15px; }
+        .version-selector { display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; }
+        .version-btn { padding: 15px 30px; font-size: 1em; border: 2px solid #8d8bf1; background: white; color: #1e1ce3; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+        .version-btn:hover { background: #ffeda4; }
+        .version-btn.active { background: #1e1ce3; color: white; }
+        .questionnaire { display: none; }
+        .questionnaire.active { display: block; }
+        .area { background: white; padding: 25px; border-radius: 10px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .area h3 { color: #1e1ce3; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #eef2ff; }
+        .question { margin-bottom: 20px; padding: 15px; background: #fafbfc; border-radius: 8px; }
+        .question-text { margin-bottom: 10px; font-weight: 500; }
+        .scale { display: flex; gap: 10px; justify-content: space-between; }
+        .scale label { flex: 1; text-align: center; cursor: pointer; }
+        .scale input[type="radio"] { display: none; }
+        .scale .radio-btn { display: block; padding: 10px 5px; border: 2px solid #ddd; border-radius: 6px; transition: all 0.2s; font-size: 0.9em; }
+        .scale input[type="radio"]:checked + .radio-btn { background: #1e1ce3; color: white; border-color: #1e1ce3; }
+        .scale .radio-btn:hover { border-color: #1e1ce3; }
+        .submit-btn { display: block; width: 100%; padding: 18px; background: linear-gradient(135deg, #1e1ce3 0%, #78f2f1 100%); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: 600; cursor: pointer; margin: 30px 0; transition: transform 0.2s; }
+        .submit-btn:hover { transform: translateY(-2px); }
+        .results { display: none; background: white; padding: 30px; border-radius: 10px; margin-top: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .results.active { display: block; }
+        .score-overall { text-align: center; padding: 30px; border-radius: 10px; margin-bottom: 25px; }
+        .score-overall.green { background: #d4edda; border: 2px solid #28a745; }
+        .score-overall.yellow { background: #fff3cd; border: 2px solid #ffc107; }
+        .score-overall.red { background: #f8d7da; border: 2px solid #dc3545; }
+        .score-value { font-size: 3em; font-weight: bold; margin: 10px 0; }
+        .score-label { font-size: 1.1em; font-weight: 600; }
+        .area-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 25px 0; }
+        .area-score { background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #1e1ce3; }
+        .area-score h4 { color: #1e1ce3; margin-bottom: 10px; }
+        .area-score .value { font-size: 1.8em; font-weight: bold; color: #1e1ce3; }
+        .interpretation { background: #f8f9fa; padding: 25px; border-radius: 8px; margin-top: 25px; }
+        .interpretation h3 { color: #1e1ce3; margin-bottom: 15px; }
+        .interpretation p { margin-bottom: 15px; }
+        .reset-btn { display: block; width: 100%; padding: 15px; background: #6c757d; color: white; border: none; border-radius: 8px; font-size: 1em; cursor: pointer; margin-top: 20px; }
+        .progress { background: #e9ecef; height: 8px; border-radius: 4px; margin-bottom: 30px; overflow: hidden; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #1e1ce3, #78f2f1); width: 0%; transition: width 0.3s; }
+        .progress-text { text-align: center; margin-top: 10px; color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="logo.png" alt="Logo" class="logo">
+            <h1>Barometr Menedżerski</h1>
+            <p>Sprawdź kondycję zarządzania w swojej firmie</p>
+        </header>
+
+        <div class="version-selector">
+            <button class="version-btn active" onclick="selectVersion('manager')">Wersja dla Menedżera</button>
+            <button class="version-btn" onclick="selectVersion('hr')">Wersja dla HR</button>
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-text" id="progressText">0% ukończone</div>
+
+        <form id="managerForm" class="questionnaire active">
+            <div class="area">
+                <h3>1. Zarządzanie strategiczne</h3>
+                <div class="question">
+                    <div class="question-text">1. Czy Twoja firma posiada jasną, zapisaną strategię rozwoju?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q1" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q1" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q1" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q1" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q1" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">2. Czy cele strategiczne są znane i rozumiane przez wszystkich pracowników?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q2" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q2" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q2" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q2" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q2" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">3. Czy regularnie (min. raz w roku) przeprowadzana jest analiza strategii i celów?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q3" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q3" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q3" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q3" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q3" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">4. Czy jako menedżer masz realny wpływ na kształtowanie strategii firmy?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q4" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q4" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q4" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q4" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q4" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">5. Czy priorytety strategiczne są jasne i pomagają w podejmowaniu decyzji operacyjnych?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q5" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q5" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q5" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q5" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q5" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>2. Zasoby menedżera</h3>
+                <div class="question">
+                    <div class="question-text">6. Czy masz wystarczającą liczbę ludzi do realizacji powierzonych zadań?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q6" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q6" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q6" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q6" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q6" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">7. Czy dysponujesz odpowiednimi narzędziami i budżetem do zarządzania zespołem?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q7" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q7" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q7" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q7" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q7" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">8. Czy masz możliwość delegowania zadań swojej prawej ręki?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q8" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q8" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q8" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q8" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q8" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">9. Czy czas poświęcony na zarządzanie jest wystarczający (nie toniesz w papierologii)?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q9" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q9" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q9" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q9" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q9" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">10. Czy otrzymujesz wsparcie od góry w podejmowaniu trudnych decyzji?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q10" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q10" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q10" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q10" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q10" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>3. Ludzie w organizacji / Zespół</h3>
+                <div class="question">
+                    <div class="question-text">11. Czy zespół jest zaangażowany w realizację celów firmy?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q11" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q11" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q11" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q11" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q11" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">12. Czy posiadasz odpowiednie kompetencje do zarządzania ludźmi?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q12" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q12" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q12" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q12" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q12" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">13. Czy atmosfera w zespole sprzyja otwartemu komunikowaniu się?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q13" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q13" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q13" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q13" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q13" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">14. Czy system motywacyjny w firmie jest sprawiedliwy i przejrzysty?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q14" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q14" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q14" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q14" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q14" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">15. Czy konflikty w zespole są rozwiązywane szybko i konstruktywnie?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q15" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q15" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q15" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q15" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q15" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>4. Procesy i procedury</h3>
+                <div class="question">
+                    <div class="question-text">16. Czy procesy w firmie są jasne, udokumentowane i przestrzegane?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q16" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q16" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q16" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q16" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q16" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">17. Czy procedury nie dublują się i nie generują niepotrzebnej biurokracji?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q17" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q17" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q17" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q17" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q17" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">18. Czy obieg informacji w firmie jest sprawny i przejrzysty?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q18" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q18" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q18" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q18" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q18" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">19. Czy masz dostęp do danych potrzebnych do podejmowania decyzji w czasie rzeczywistym?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q19" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q19" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q19" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q19" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q19" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>5. Rozwój technologii</h3>
+                <div class="question">
+                    <div class="question-text">20. Czy firma inwestuje w nowoczesne technologie wspierające zarządzanie?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q20" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q20" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q20" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q20" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q20" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">21. Czy oprogramowanie, którego używasz, jest intuicyjne i niezawodne?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q21" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q21" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q21" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q21" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q21" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">22. Czy masz możliwość pracy zdalnej dzięki odpowiednim narzędziom technologicznym?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q22" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q22" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q22" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q22" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q22" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">23. Czy technologia w firmie pomaga automatyzować powtarzalne zadania?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="m_q23" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="m_q23" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="m_q23" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="m_q23" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="m_q23" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="submit-btn" onclick="calculateResults('manager')">Sprawdź wyniki</button>
+        </form>
+
+        <form id="hrForm" class="questionnaire">
+            <div class="area">
+                <h3>1. Zarządzanie strategiczne</h3>
+                <div class="question">
+                    <div class="question-text">1. Czy firma posiada jasną, zapisaną strategię rozwoju?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q1" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q1" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q1" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q1" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q1" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">2. Czy cele strategiczne są skutecznie komunikowane pracownikom?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q2" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q2" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q2" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q2" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q2" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">3. Czy HR bierze udział w planowaniu i weryfikacji strategii firmy?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q3" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q3" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q3" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q3" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q3" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">4. Czy menedżerowie rozumieją i wspierają strategię organizacji?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q4" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q4" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q4" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q4" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q4" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">5. Czy strategia przekłada się na konkretne działania operacyjne?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q5" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q5" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q5" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q5" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q5" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>2. Zasoby menedżera</h3>
+                <div class="question">
+                    <div class="question-text">6. Czy menedżerowie mają wystarczającą liczbę ludzi do realizacji zadań?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q6" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q6" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q6" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q6" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q6" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">7. Czy menedżerowie dysponują odpowiednimi narzędziami i budżetem?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q7" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q7" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q7" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q7" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q7" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">8. Czy menedżerowie mają wyznaczoną swoją prawą rękę do delegowania zadań?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q8" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q8" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q8" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q8" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q8" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">9. Czy menedżerowie nie są przytłoczeni papierologią?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q9" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q9" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q9" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q9" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q9" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">10. Czy menedżerowie otrzymują wsparcie od zarządu w trudnych decyzjach?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q10" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q10" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q10" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q10" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q10" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>3. Ludzie w organizacji / Zespół</h3>
+                <div class="question">
+                    <div class="question-text">11. Czy zespoły są zaangażowane w realizację celów firmy?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q11" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q11" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q11" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q11" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q11" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">12. Czy menedżerowie posiadają odpowiednie kompetencje do zarządzania ludźmi?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q12" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q12" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q12" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q12" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q12" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">13. Czy atmosfera w zespołach sprzyja otwartej komunikacji?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q13" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q13" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q13" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q13" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q13" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">14. Czy systemy motywacyjne są sprawiedliwe i przejrzyste dla pracowników?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q14" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q14" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q14" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q14" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q14" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">15. Czy konflikty w zespołach są rozwiązywane szybko i konstruktywnie?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q15" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q15" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q15" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q15" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q15" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>4. Procesy i procedury</h3>
+                <div class="question">
+                    <div class="question-text">16. Czy procesy w firmie są jasne, udokumentowane i przestrzegane?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q16" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q16" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q16" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q16" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q16" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">17. Czy procedury HR są zintegrowane z procesami operacyjnymi?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q17" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q17" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q17" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q17" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q17" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">18. Czy obieg informacji w firmie jest sprawny i przejrzysty?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q18" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q18" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q18" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q18" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q18" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">19. Czy menedżerowie mają dostęp do danych w czasie rzeczywistym?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q19" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q19" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q19" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q19" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q19" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="area">
+                <h3>5. Rozwój technologii</h3>
+                <div class="question">
+                    <div class="question-text">20. Czy firma inwestuje w technologie wspierające zarządzanie?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q20" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q20" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q20" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q20" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q20" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">21. Czy oprogramowanie jest intuicyjne i niezawodne dla użytkowników?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q21" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q21" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q21" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q21" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q21" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">22. Czy firma umożliwia pracę zdalną dzięki technologii?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q22" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q22" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q22" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q22" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q22" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+                <div class="question">
+                    <div class="question-text">23. Czy technologia pomaga automatyzować powtarzalne zadania?</div>
+                    <div class="scale">
+                        <label><input type="radio" name="h_q23" value="1"><span class="radio-btn">1<br>Zdecydowanie nie</span></label>
+                        <label><input type="radio" name="h_q23" value="2"><span class="radio-btn">2<br>Raczej nie</span></label>
+                        <label><input type="radio" name="h_q23" value="3"><span class="radio-btn">3<br>Nie wiem</span></label>
+                        <label><input type="radio" name="h_q23" value="4"><span class="radio-btn">4<br>Raczej tak</span></label>
+                        <label><input type="radio" name="h_q23" value="5"><span class="radio-btn">5<br>Zdecydowanie tak</span></label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="submit-btn" onclick="calculateResults('hr')">Sprawdź wyniki</button>
+        </form>
+
+        <div id="results" class="results">
+            <h2 style="text-align: center; color: #1e1ce3; margin-bottom: 20px;">Wyniki Barometru Menedżerskiego</h2>
+            <div class="score-overall" id="scoreOverall">
+                <div class="score-label">Twój wynik ogólny</div>
+                <div class="score-value" id="scoreValue">0.0</div>
+                <div id="scoreInterpretation"></div>
+            </div>
+            <div class="area-scores" id="areaScores"></div>
+            <div class="interpretation" id="interpretation"></div>
+            <button class="reset-btn" onclick="resetQuiz()">Wypełnij ponownie</button>
+        </div>
+    </div>
+
+    <script>
+        function selectVersion(version) {
+            var managerForm = document.getElementById('managerForm');
+            var hrForm = document.getElementById('hrForm');
+            var managerBtn = document.querySelectorAll('.version-btn')[0];
+            var hrBtn = document.querySelectorAll('.version-btn')[1];
+            
+            if (version === 'manager') {
+                managerForm.classList.add('active');
+                hrForm.classList.remove('active');
+                managerBtn.classList.add('active');
+                hrBtn.classList.remove('active');
+            } else {
+                hrForm.classList.add('active');
+                managerForm.classList.remove('active');
+                hrBtn.classList.add('active');
+                managerBtn.classList.remove('active');
+            }
+            updateProgress(version);
+        }
+
+        function updateProgress(version) {
+            var prefix = version === 'manager' ? 'm_q' : 'h_q';
+            var answered = 0;
+            for (var i = 1; i <= 23; i++) {
+                var radios = document.querySelectorAll('input[name="' + prefix + i + '"]:checked');
+                if (radios.length > 0) answered++;
+            }
+            var percent = Math.round((answered / 23) * 100);
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressText').textContent = percent + '% ukończone';
+        }
+
+        function calculateResults(version) {
+            var prefix = version === 'manager' ? 'm_q' : 'h_q';
+            var scores = [];
+            var areaScores = {1: [], 2: [], 3: [], 4: [], 5: []};
+            
+            for (var i = 1; i <= 23; i++) {
+                var radios = document.querySelectorAll('input[name="' + prefix + i + '"]:checked');
+                if (radios.length === 0) {
+                    alert('Proszę odpowiedzieć na wszystkie pytania!');
+                    return;
+                }
+                var value = parseInt(radios[0].value);
+                scores.push(value);
+                
+                if (i <= 5) areaScores[1].push(value);
+                else if (i <= 10) areaScores[2].push(value);
+                else if (i <= 15) areaScores[3].push(value);
+                else if (i <= 19) areaScores[4].push(value);
+                else areaScores[5].push(value);
+            }
+            
+            var total = scores.reduce(function(a, b) { return a + b; }, 0);
+            var average = total / scores.length;
+            
+            var overallDiv = document.getElementById('scoreOverall');
+            overallDiv.classList.remove('green', 'yellow', 'red');
+            
+            if (average <= 2.4) {
+                overallDiv.classList.add('green');
+                document.getElementById('scoreInterpretation').innerHTML = '<strong>Strefa zielona</strong><br>Sytuacja wymaga poprawy, ale masz solidne fundamenty do działania.';
+            } else if (average <= 3.6) {
+                overallDiv.classList.add('yellow');
+                document.getElementById('scoreInterpretation').innerHTML = '<strong>Strefa żółta</strong><br>Sytuacja wymaga uwagi i wdrożenia konkretnych zmian.';
+            } else {
+                overallDiv.classList.add('red');
+                document.getElementById('scoreInterpretation').innerHTML = '<strong>Strefa czerwona</strong><br>Sytuacja wymaga pilnych działań naprawczych.';
+            }
+            
+            document.getElementById('scoreValue').textContent = average.toFixed(1);
+            
+            var areaScoresDiv = document.getElementById('areaScores');
+            areaScoresDiv.innerHTML = '';
+            var areaNames = {
+                1: 'Zarządzanie strategiczne',
+                2: 'Zasoby menedżera',
+                3: 'Ludzie w organizacji',
+                4: 'Procesy i procedury',
+                5: 'Rozwój technologii'
+            };
+            
+            for (var area = 1; area <= 5; area++) {
+                var areaValues = areaScores[area];
+                var areaAvg = areaValues.reduce(function(a, b) { return a + b; }, 0) / areaValues.length;
+                var zoneText = areaAvg <= 2.4 ? '(Zielona)' : areaAvg <= 3.6 ? '(Żółta)' : '(Czerwona)';
+                var zoneColor = areaAvg <= 2.4 ? '#28a745' : areaAvg <= 3.6 ? '#ffc107' : '#dc3545';
+                
+                areaScoresDiv.innerHTML += '<div class="area-score">' +
+                    '<h4>' + areaNames[area] + '</h4>' +
+                    '<div class="value" style="color: ' + zoneColor + '">' + areaAvg.toFixed(1) + ' ' + zoneText + '</div>' +
+                '</div>';
+            }
+            
+            var interpretation = document.getElementById('interpretation');
+            interpretation.innerHTML = '<h3>Interpretacja wyników</h3>';
+            if (average <= 2.4) {
+                interpretation.innerHTML += '<p><strong>Gratulacje!</strong> Twoja firma ma solidne fundamenty zarządzania. Wynik w strefie zielonej (1.0-2.4) wskazuje, że większość procesów działa sprawnie.</p>' +
+                    '<p><strong>Rekomendacje:</strong> Skup się na doskonaleniu obszarów, które otrzymały najniższe oceny. Nawet przy dobrych wynikach warto regularnie weryfikować strategię i procesy.</p>';
+            } else if (average <= 3.6) {
+                interpretation.innerHTML += '<p><strong>Uwaga!</strong> Wynik w strefie żółtej (2.5-3.6) wskazuje na obszary wymagające poprawy. Niektóre procesy mogą działać nieoptymalnie.</p>' +
+                    '<p><strong>Rekomendacje:</strong> Zidentyfikuj obszary z najniższymi wynikami i opracuj plan naprawczy. Rozważ szkolenia dla menedżerów i wdrożenie nowych narzędzi wspierających zarządzanie.</p>';
+            } else {
+                interpretation.innerHTML += '<p><strong>Alarm!</strong> Wynik w strefie czerwonej (3.7-5.0) wskazuje na poważne problemy w zarządzaniu. Wymagane są pilne działania naprawcze.</p>' +
+                    '<p><strong>Rekomendacje:</strong> Przeprowadź audyt wszystkich obszarów zarządzania. Skup się na budowaniu strategii, poprawie komunikacji i wdrożeniu nowoczesnych narzędzi. Rozważ wsparcie zewnętrznego konsultanta.</p>';
+            }
+            
+            document.getElementById('results').classList.add('active');
+            document.getElementById('managerForm').classList.remove('active');
+            document.getElementById('hrForm').classList.remove('active');
+            document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        }
+
+        function resetQuiz() {
+            document.getElementById('managerForm').reset();
+            document.getElementById('hrForm').reset();
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('managerForm').classList.add('active');
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = '0% ukończone';
+            selectVersion('manager');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        document.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                var form = this.closest('form');
+                if (form.id === 'managerForm') updateProgress('manager');
+                else updateProgress('hr');
+            });
+        });
+    </script>
+</body>
+</html>
